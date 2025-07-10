@@ -8,20 +8,6 @@ from annotation import annotation
 import math
 import statistics
 
-def getPPM(mz_obs, mz_ref):
-    return (mz_obs - mz_ref) / mz_ref * 1e6
-
-def ppmToMass(ppm, mz_ref):
-    return (ppm / 1e6) * mz_ref
-
-def sign(num):
-    return -1 if num < 0 else 1
-
-def argmin(a):
-    return min(range(len(a)), key=lambda x : a[x])
-def argmax(a):
-    return max(range(len(a)), key=lambda x : a[x])
-
 
 def createPeptide(seq, z, mod_string):
      # create peptide sequence
@@ -227,12 +213,6 @@ class LoadObj:
             
         return targ, pred
     
-    def filter_by_scan_range(self, mz, ints, min_mz, max_mz, annotated=None):
-        ints[mz < min_mz] = 0
-        ints[mz > max_mz] = 0
-        if annotated is not None:
-            annotated = annotated[ints != 0]
-        return ints[ints != 0], mz[ints != 0], annotated
     
     def input_from_file(self, fstarts, fn):
         """
@@ -805,140 +785,3 @@ class LoadObj:
             else:
                 count = ion.count(mod_target)
         return count
-
-    def match(self, int_targ, mz_targ, int_pred, mz_pred):
-        ppm_tol=20
-        # collapse predicted on itself
-        mz_aligned = []
-        int_pred_aligned = []
-        current_sum = 0.0
-        current_group = []
-        i = 0
-        while i < (mz_pred.size-1):
-            if abs(getPPM(mz_pred[i], mz_pred[i+1])) > ppm_tol:
-                current_group.append(mz_pred[i])
-                mz_aligned.append(statistics.fmean(current_group))
-                int_pred_aligned.append(current_sum + int_pred[i])
-                current_sum = 0.0
-                current_group.clear()
-            else:
-                current_group.append(mz_pred[i])
-                current_sum += int_pred[i]
-            i+=1
-        # last element corner case
-        current_group.append(mz_pred[i])
-        mz_aligned.append(statistics.fmean(current_group))
-        int_pred_aligned.append(current_sum + int_pred[i])
-        
-        int_pred_aligned = np.array(int_pred_aligned, dtype=np.float32)
-        mz_aligned = np.array(mz_aligned, dtype=np.float32)
-        
-        # align targ onto predicted
-        int_targ_aligned = np.zeros_like(int_pred_aligned)
-        targ_index = 0
-        for i in range(int_targ_aligned.size-1):
-            ppm_cur = abs(getPPM(mz_aligned[i], mz_targ[targ_index]))
-            ppm_next = abs(getPPM(mz_aligned[i+1], mz_targ[targ_index]))
-            
-            while ppm_cur < ppm_next and targ_index < int_targ.size:
-                int_targ_aligned[i] += int_targ[targ_index]
-                targ_index += 1
-                if targ_index >= int_targ.size: 
-                    break
-                ppm_cur = abs(getPPM(mz_aligned[i], mz_targ[targ_index]))
-                ppm_next = abs(getPPM(mz_aligned[i+1], mz_targ[targ_index]))
-            
-            if targ_index >= int_targ.size: 
-                break
-                
-        while targ_index < int_targ.size:
-            int_targ_aligned[int_targ_aligned.size-1] += int_targ[targ_index]
-            targ_index += 1
-                        
-        return int_targ_aligned, int_pred_aligned, mz_aligned
-    
-    
-    """ 
-    def match(self, int_targ, mz_targ, int_pred, mz_pred):
-        ppm_tol=25
-        
-        int_targ_aligned = [0]
-        int_pred_aligned = [0]
-        
-        mz_aligned = []
-        
-        indexTarg = 0
-        indexPred = 0
-        if len(mz_targ) == 0:
-            current_mz = mz_pred[0]
-        elif len(mz_pred) == 0:
-            current_mz = mz_targ[0]
-        else:
-            current_mz = min(mz_targ[0], mz_pred[0])
-        current_index = 0
-        mz_aligned.append(current_mz)
-        
-        while indexTarg < mz_targ.size and indexPred < mz_pred.size:
-            match_targ = False
-            match_pred = False
-            ppm_targ = abs(getPPM(mz_targ[indexTarg], current_mz))
-            ppm_pred = abs(getPPM(mz_pred[indexPred], current_mz))
-            if ppm_targ <= ppm_tol:
-                if not (indexPred < mz_pred.size -1 and abs(getPPM(mz_targ[indexTarg], mz_pred[indexPred+1])) < ppm_targ):
-                    int_targ_aligned[current_index] += int_targ[indexTarg]
-                    indexTarg+=1
-                    match_targ = True
-            
-            if ppm_pred <= ppm_tol:
-                if not (indexTarg < mz_targ.size -1 and abs(getPPM(mz_pred[indexPred], mz_targ[indexTarg+1])) < ppm_pred):
-                    int_pred_aligned[current_index] += int_pred[indexPred]
-                    indexPred+=1
-                    match_pred = True
-            
-            if not match_pred and not match_targ:
-                current_mz = min(mz_targ[indexTarg], mz_pred[indexPred])
-                current_index += 1
-                int_targ_aligned.append(0)
-                int_pred_aligned.append(0)
-                mz_aligned.append(current_mz)
-            
-
-            
-            #if mz_targ[indexTarg] < mz_pred[indexPred]:
-            #    if getPPM(mz_targ[indexTarg], current_mz) <= ppm_tol:
-            #        int_targ_aligned[current_index] += int_targ[indexTarg]
-            #    else:
-            #        current_index+=1
-            #        int_targ_aligned.append(int_targ[indexTarg])
-            #        int_pred_aligned.append(0)
-            #        current_mz = mz_targ[indexTarg]
-            #    indexTarg+=1
-            #else:
-            #    if getPPM(mz_pred[indexPred], current_mz) <= ppm_tol:
-            #        int_pred_aligned[current_index] += int_pred[indexPred]
-            #    else:
-            #        current_index+=1
-            #        int_pred_aligned.append(int_pred[indexPred])
-            #        int_targ_aligned.append(0)
-            #        current_mz = mz_pred[indexPred]
-            #    indexPred+=1
-        
-        while indexTarg < mz_targ.size:
-            int_targ_aligned.append(int_targ[indexTarg])
-            int_pred_aligned.append(0)
-            mz_aligned.append(mz_targ[indexTarg])
-            indexTarg+=1
-            
-            
-        while indexPred < mz_pred.size:
-            int_pred_aligned.append(int_pred[indexPred])
-            int_targ_aligned.append(0)
-            mz_aligned.append(mz_pred[indexPred])
-            indexPred+=1
-            
-            
-        
-        
-        return np.array(int_targ_aligned, dtype=np.float32), np.array(int_pred_aligned, dtype=np.float32), np.array(mz_aligned, dtype=np.float32)
-        
-         """
