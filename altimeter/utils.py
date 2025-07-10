@@ -36,8 +36,12 @@ def pepFromSage(mod_seq):
 
 
 def get_mod_seq(seq, mods):
-    mods_oms = mods.replace("Unimod:4", "Carbamidomethyl").replace("Unimod:35", "Oxidation")
-    mods_oms = mods.replace("UNIMOD:4", "Carbamidomethyl").replace("UNIMOD:35", "Oxidation")
+    mods_oms = (
+        mods.replace("Unimod:4", "Carbamidomethyl")
+            .replace("UNIMOD:4", "Carbamidomethyl")
+            .replace("Unimod:35", "Oxidation")
+            .replace("UNIMOD:35", "Oxidation")
+    )
     corrected_mods = ""
     if len(mods_oms) > 0:
         index2mod = defaultdict(list)
