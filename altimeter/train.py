@@ -116,10 +116,14 @@ trainer = L.Trainer(default_root_dir=saved_model_path,
                     #limit_val_batches=1
                     )
 
-checkpoint_path = os.path.join(config['base_path'], config['saved_model_path'], config['restart'])
-#trainer.fit(litmodel, datamodule=dm, ckpt_path=checkpoint_path)
+checkpoint_path = (
+    os.path.join(config['base_path'], config['saved_model_path'], config['restart'])
+    if config['restart'] else None
+)
+
+trainer.fit(litmodel, datamodule=dm, ckpt_path=checkpoint_path)
 #trainer.test(litmodel, datamodule=dm, ckpt_path=checkpoint_path)
-trainer.predict(litmodel, datamodule=dm, ckpt_path=checkpoint_path)
+#trainer.predict(litmodel, datamodule=dm, ckpt_path=checkpoint_path)
 
 
 
