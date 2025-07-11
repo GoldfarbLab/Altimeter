@@ -3,8 +3,8 @@ import torch as torch
 import sys
 from torch.optim.lr_scheduler import StepLR, ExponentialLR
 import wandb
-import matplotlib.pyplot as plt
 from models_spline import FlipyFlopy
+from plot_utils import scoreDistPlot
 
 # define the LightningModule
 class LitFlipyFlopy(L.LightningModule):
@@ -79,7 +79,7 @@ class LitFlipyFlopy(L.LightningModule):
     def on_validation_epoch_end(self):
         all_preds = torch.cat(self.validation_step_outputs)
         self.log("val_SA_median", all_preds.median(), on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
-        self.scoreDistPlot(all_preds, "val")
+        scoreDistPlot(all_preds, "val", self.logger)
         self.validation_step_outputs.clear()  # free memory
     
     def forward(self, x:tuple[torch.Tensor, torch.Tensor]):
@@ -124,13 +124,6 @@ class LitFlipyFlopy(L.LightningModule):
     ############################# Visualization ###################################
     ###############################################################################
     
-    def scoreDistPlot(self, losses, dataset, epoch=0):
-        plt.close('all')
-        fig, ax = plt.subplots()
-        ax.hist(losses.cpu(), 100, histtype='bar', color='blue') #density=True,
-        self.logger.experiment.log({"cs_dist_plot_" + dataset: wandb.Image(plt)})
-        plt.close()
-        
     
 ###############################################################################
 ############################# Loss function ###################################
