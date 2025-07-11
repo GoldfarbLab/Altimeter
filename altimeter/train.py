@@ -4,13 +4,12 @@ import os
 import yaml
 import utils_unispec
 import torch
-from altimeter_dataset import AltimeterDataModule, filter_by_scan_range, match, norm_base_peak
+from altimeter_dataset import AltimeterDataModule
 from lightning_model import LitFlipyFlopy
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import ModelCheckpoint
 import lightning as L
-from annotation import annotation
 from plot_utils import MirrorPlotCallback
 
 torch.set_float32_matmul_precision('medium')
@@ -50,7 +49,10 @@ else:
 ############################ Weights and Biases ###############################
 ###############################################################################
 
-wandb_logger = WandbLogger(project="Altimeter", config = config, log_model=False, save_dir="/scratch1/fs1/d.goldfarb/Backpack/")
+wandb_logger = WandbLogger(project="Altimeter", 
+                           config = config, 
+                           log_model=False, 
+                           save_dir="/scratch1/fs1/d.goldfarb/Backpack/")
 
 ###############################################################################
 ################################## Model ######################################
@@ -88,21 +90,10 @@ with open(os.path.join(model_folder_path, "ion_dictionary.txt"), 'w') as file:
     file.write(open(config['ion_dictionary_path']).read())
     
 
-def SpectralAngle(cs, eps=1e-5):
-    cs = np.clip(cs, a_min=-(1-eps), a_max = 1-eps)
-    return 1 - 2 * (np.arccos(cs) / np.pi)
-
-
-###############################################################################
-############################### Visualization #################################
-###############################################################################
-
-    
-
 ###############################################################################
 ########################## Training and testing ###############################
 ###############################################################################
-stopping_criteria = EarlyStopping(monitor="val_SA_mean", mode="max", min_delta=0.00, patience=5) #5
+stopping_criteria = EarlyStopping(monitor="val_SA_mean", mode="max", min_delta=0.00, patience=5)
 checkpoint_callback = ModelCheckpoint(dirpath=saved_model_path, save_top_k=5, monitor="val_SA_mean", mode="max", every_n_epochs=1)
 
 dm = AltimeterDataModule(config, D)
@@ -110,10 +101,8 @@ mirrorplot_callback = MirrorPlotCallback(dm)
 trainer = L.Trainer(default_root_dir=saved_model_path,
                     logger=wandb_logger,
                     callbacks=[stopping_criteria, checkpoint_callback, mirrorplot_callback],
-                    strategy="ddp_find_unused_parameters_true", #ddp
+                    strategy="ddp_find_unused_parameters_true",
                     max_epochs=config['epochs'],
-                    #limit_train_batches=1, 
-                    #limit_val_batches=1
                     )
 
 checkpoint_path = (
