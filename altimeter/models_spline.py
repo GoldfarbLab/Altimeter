@@ -439,9 +439,21 @@ class FlipyFlopy(nn.Module):
         else:
             print(sum([np.prod(m.shape) for m in list(self.parameters())]))
             
-    def forward_coef(self, inp:tuple[torch.Tensor, torch.Tensor]):
+    def compute_coefficients(self, inp:tuple[torch.Tensor, torch.Tensor]):
+        """Return B-spline coefficients and knots for a given input.
+
+        Parameters
+        ----------
+        inp : tuple of tensors
+            Tuple containing the sequence tensor and charge tensor.
+
+        Returns
+        -------
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+            B-spline coefficients, knot locations and the integrated AUC.
+        """
+
         inp, inpch = inp
-    #def forward(self, inp:torch.Tensor, inpch:torch.Tensor):
    
 
         if len(inpch.shape) == 0:
@@ -470,13 +482,15 @@ class FlipyFlopy(nn.Module):
         # get b-spline coefficients
         poly_coef = torch.reshape(self.final(out.transpose(-1,-2)).mean(dim=1), (inp.shape[0], self.num_coefs, self.out_dim))
         knots = self.get_knots().unsqueeze(0).repeat(inp.shape[0], 1)
-        auc = self.integrate(knots[0], poly_coef)
+        auc = self.integrate_auc(knots[0], poly_coef)
         
         return poly_coef, knots, auc 
         
     def forward(self, inp):
+        """Evaluate the full model and return predicted intensities."""
+
         [inp, inpch, inpce] = inp
-        poly_coef, knots, _ = self.forward_coef([inp, inpch])
+        poly_coef, knots, _ = self.compute_coefficients([inp, inpch])
              
         # create knots
         knots = knots.unsqueeze(2).repeat(1,1,self.out_dim)
@@ -485,7 +499,7 @@ class FlipyFlopy(nn.Module):
             inpce = inpce.unsqueeze(-1)
         inpce = inpce.unsqueeze(1).repeat(1, self.out_dim)
 
-        out = bspline(inpce, knots, poly_coef, 3)
+        out = eval_bspline(inpce, knots, poly_coef, 3)
         
         return out
     
@@ -499,12 +513,27 @@ class FlipyFlopy(nn.Module):
         return knots
     
     # from NCE 20 to 40
-    def integrate(self, knots, poly_coef):
+    def integrate_auc(self, knots, poly_coef):
+        """Approximate the integral of the spline coefficients.
+
+        Parameters
+        ----------
+        knots : torch.Tensor
+            Knot locations of length equal to ``num_coefs + degree``.
+        poly_coef : torch.Tensor
+            Coefficient tensor returned from :meth:`compute_coefficients`.
+
+        Returns
+        -------
+        torch.Tensor
+            Estimated area under the curve for each output dimension.
+        """
+
         auc = torch.zeros(poly_coef.shape[0], poly_coef.shape[2], device=poly_coef.device)
-        auc += poly_coef[:,0,:] * (knots[4] - knots[0]) * 0.08408505396482596 #0.0752889089763667 
-        auc += poly_coef[:,1,:] * (knots[5] - knots[1]) * 0.47690670779403865 #0.3075992695693613 #
-        auc += poly_coef[:,2,:] * (knots[6] - knots[2]) * 0.19068693745182305 #0.07144580350892756 #
-        auc += poly_coef[:,3,:] * (knots[7] - knots[3]) * 0.00731285949764904  #0.0009773926870403494 #
+        auc += poly_coef[:,0,:] * (knots[4] - knots[0]) * 0.08408505396482596
+        auc += poly_coef[:,1,:] * (knots[5] - knots[1]) * 0.47690670779403865
+        auc += poly_coef[:,2,:] * (knots[6] - knots[2]) * 0.19068693745182305
+        auc += poly_coef[:,3,:] * (knots[7] - knots[3]) * 0.00731285949764904
         return auc / 4
             
 
@@ -514,7 +543,7 @@ class FlipyFlopy(nn.Module):
 # k = polynomial degree
 # i = basis-spline index
 # t = knots
-def B(x, k, i, t):
+def _basis(x, k, i, t):
     out = torch.zeros_like(x)
     
     if k == 0:
@@ -524,12 +553,12 @@ def B(x, k, i, t):
     if t[0, i+k, 0] == t[0, i, 0]:
         c1 = torch.zeros_like(x)
     else:
-        c1 = (x - t[:,i,:])/(t[:,i+k,:] - t[:,i,:]) * B(x, k-1, i, t)
+        c1 = (x - t[:,i,:])/(t[:,i+k,:] - t[:,i,:]) * _basis(x, k-1, i, t)
         
     if t[0, i+k+1, 0] == t[0, i+1, 0]:
         c2 = torch.zeros_like(x)
     else:
-        c2 = (t[:,i+k+1,:] - x)/(t[:,i+k+1,:] - t[:,i+1,:]) * B(x, k-1, i+1, t)
+        c2 = (t[:,i+k+1,:] - x)/(t[:,i+k+1,:] - t[:,i+1,:]) * _basis(x, k-1, i+1, t)
     
     return c1 + c2
 
@@ -537,9 +566,10 @@ def B(x, k, i, t):
 # t = knots
 # c = coefficients
 # k = polynomial degree
-def bspline(x, t, c, k):
+def eval_bspline(x, t, c, k):
+    """Evaluate a B-spline for a batch of inputs."""
     n = t.shape[1] - k - 1
     out = torch.zeros_like(x)
     for i in range(n):
-        out += c[:, i, :] * B(x, k, i, t) 
+        out += c[:, i, :] * _basis(x, k, i, t)
     return out

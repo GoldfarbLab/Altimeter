@@ -8,34 +8,70 @@ from models_spline import FlipyFlopy
 
 # define the LightningModule
 class LitFlipyFlopy(L.LightningModule):
-    def __init__(self, 
-                 config,
-                 model_config):
+    """Lightning wrapper around :class:`FlipyFlopy`."""
+
+    def __init__(self, config, model_config):
         super().__init__()
         self.model = FlipyFlopy(**model_config)
         self.config = config
         self.validation_step_outputs = []
 
     def training_step(self, batch, batch_idx):
-        weighted_loss = self.step(batch, batch_idx)
-        self.log("train_loss", weighted_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=self.config['batch_size']) 
+        loss = self._compute_train_loss(batch)
+        self.log(
+            "train_loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+            sync_dist=True,
+            batch_size=self.config['batch_size'],
+        )
         for i, x in enumerate(self.model.get_knots().detach().cpu().numpy()):
-            self.log("knots"+str(i), x, on_step=True, on_epoch=False, prog_bar=False, logger=True, sync_dist=True, batch_size=self.config['batch_size'])  
-        return weighted_loss
+            self.log(
+                "knots" + str(i),
+                x,
+                on_step=True,
+                on_epoch=False,
+                prog_bar=False,
+                logger=True,
+                sync_dist=True,
+                batch_size=self.config['batch_size'],
+            )
+        return loss
     
     def validation_step(self, batch, batch_idx):
-        losses = self.test_step(batch, batch_idx)
-        self.log("val_SA_mean", losses.mean(), on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=self.config['test_batch_size']) 
+        losses = self._compute_eval_loss(batch)
+        self.log(
+            "val_SA_mean",
+            losses.mean(),
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+            sync_dist=True,
+            batch_size=self.config['test_batch_size'],
+        )
         self.validation_step_outputs.append(losses)
         return losses
     
     def test_step(self, batch, batch_idx):
-        losses = self.test_step(batch, batch_idx)
-        self.log("test_SA_mean", losses.mean(), on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=self.config['test_batch_size'])  
+        losses = self._compute_eval_loss(batch)
+        self.log(
+            "test_SA_mean",
+            losses.mean(),
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
+            sync_dist=True,
+            batch_size=self.config['test_batch_size'],
+        )
         return losses
     
     def predict_step(self, batch, batch_idx):
-        losses = self.test_step(batch, batch_idx)
+        losses = self._compute_eval_loss(batch)
         for i, loss in enumerate(losses):
             print("figure", i, loss.item(), len(batch["seq"][i]))
         return losses
@@ -53,11 +89,11 @@ class LitFlipyFlopy(L.LightningModule):
     #    return self.model(x,y)
     
     def forward_coef(self, x):
-        return self.model.forward_coef(x)
+        return self.model.compute_coefficients(x)
     
     
     
-    def step_helper(self, batch, batch_idx):
+    def _forward_batch(self, batch):
         samples = batch['samples']
         targ = batch['targ']
         mask = batch['mask']
@@ -66,16 +102,14 @@ class LitFlipyFlopy(L.LightningModule):
         mask_zero = batch['min_mz'] == "0"
         out = self.model(samples)
         return targ, mask, LODs, weights, mask_zero, out
-    
-    def step(self, batch, batch_idx):
-        targ, mask, LODs, weights, mask_zero, out = self.step_helper(batch, batch_idx)
-        weighted_loss = LossFunc(targ, out, mask, LODs, weights, root=self.config['root_int'], mask_zero=mask_zero)
-        return weighted_loss
-    
-    def test_step(self, batch, batch_idx):
-        targ, mask, LODs, weights, mask_zero, out = self.step_helper(batch, batch_idx)
-        losses = -LossFunc(targ, out, mask, LODs, weights, root=self.config['root_int'], do_mean=False, do_weights=False, mask_zero=mask_zero)
-        return losses
+
+    def _compute_train_loss(self, batch):
+        targ, mask, LODs, weights, mask_zero, out = self._forward_batch(batch)
+        return LossFunc(targ, out, mask, LODs, weights, root=self.config['root_int'], mask_zero=mask_zero)
+
+    def _compute_eval_loss(self, batch):
+        targ, mask, LODs, weights, mask_zero, out = self._forward_batch(batch)
+        return -LossFunc(targ, out, mask, LODs, weights, root=self.config['root_int'], do_mean=False, do_weights=False, mask_zero=mask_zero)
 
 
     
