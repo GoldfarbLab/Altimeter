@@ -7,6 +7,13 @@ from altimeter_dataset import filter_by_scan_range, match, norm_base_peak
 
 plt.close('all')
 
+def scoreDistPlot(losses, dataset, logger, epoch=0):
+    plt.close('all')
+    fig, ax = plt.subplots()
+    ax.hist(losses.cpu(), 100, histtype='bar', color='blue')
+    logger.experiment.log({"cs_dist_plot_" + dataset: wandb.Image(plt)})
+    plt.close()
+
 class MirrorPlotCallback(L.Callback):
     def __init__(self, dm):
         super().__init__()
