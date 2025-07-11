@@ -279,41 +279,12 @@ class AltimeterDataset(Dataset):
                 ]
                 # Do not write if the internal extends beyond length of peptide-2
                 if (start+ext)>=(len(seq)-2): a = False
-            # The precursor ion must be the same charge
-            #if ion[0] == 'p' and ion_charge != charge:
-            #    a = False
             if (
                 (ion[0] in ['a','b','y']) and 
                 (int(ion[1:].split('-')[0].split('+')[0].split('^')[0])>(len(seq)-1))
                 ):
                 # Do not write if a/b/y is longer than length-1 of peptide
                 a = False
-            if ('H3PO4' in ion):
-                # Do not write Phospho specific neutrals for non-phosphopeptide
-                nl_count = 1
-                for nl in annot.NL:
-                    if 'CH4SO' in nl:
-                        if nl[0].isdigit():
-                            nl_count = int(re.search("^\d*", nl).group(0))
-                if sum(['Phospho' == mod for mod in mods]) < nl_count:
-                    a = False
-            if ('CH4SO' in ion):
-                nl_count = 1
-                for nl in annot.NL:
-                    if 'CH4SO' in nl:
-                        if nl[0].isdigit():
-                            nl_count = int(re.search("^\d*", nl).group(0))
-                if self.getModCount(seq, ion, ext, 'Oxidation', modlst) < nl_count:
-                    a = False
-                    
-            if ('C2H5SNO' in ion):
-                nl_count = 1
-                for nl in annot.NL:
-                    if 'CH4SO' in nl:
-                        if nl[0].isdigit():
-                            nl_count = int(re.search("^\d*", nl).group(0))
-                if self.getModCount(seq, ion, ext, 'Carbamidomethyl', modlst) < nl_count:
-                    a = False
             # Do not include fragments with a higher charge than the precursor
             if ion_charge > charge:
                 a = False

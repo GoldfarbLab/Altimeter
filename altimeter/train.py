@@ -10,7 +10,7 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import ModelCheckpoint
 import lightning as L
-from plot_utils import MirrorPlotCallback
+from altimeter.plot import MirrorPlotCallback
 
 torch.set_float32_matmul_precision('medium')
 

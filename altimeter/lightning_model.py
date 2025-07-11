@@ -1,9 +1,9 @@
 import lightning as L
 import torch as torch
 import sys
-from torch.optim.lr_scheduler import StepLR, ExponentialLR
+from torch.optim.lr_scheduler import ExponentialLR
 from model import FlipyFlopy
-from plot_utils import scoreDistPlot
+from plot import scoreDistPlot
 
 # define the LightningModule
 class LitFlipyFlopy(L.LightningModule):
