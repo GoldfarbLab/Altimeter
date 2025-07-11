@@ -1,4 +1,3 @@
-import pyopenms as oms
 import pyopenms.Constants
 import re
 import csv
@@ -7,7 +6,6 @@ import torch
 from annotation import annotation
 from dataset import createPeptide, calcMZ
 import math
-import statistics
 
 
 def calcIsotopeDistribution(seq, z, mods, annot_string, iso2efficiency):
