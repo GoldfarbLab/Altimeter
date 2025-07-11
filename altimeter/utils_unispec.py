@@ -141,29 +141,6 @@ class LoadObj:
             out = [output]
         return out
 
-    def apply_mask(self, targ, pred, mask, LOD, doFullMask=True):
-        LOD = LOD.unsqueeze(1).expand_as(targ)
-        # mask below limit of detection
-        pred = torch.where(torch.logical_and(targ==0, pred<=LOD), 0.0, pred)  
-        if doFullMask:
-            pred = torch.where(torch.logical_and(targ==0, pred>LOD), pred-LOD, pred)
-
-        
-        # mask 1 - outside of scan range. Can have any intensity without penalty
-        pred = torch.where(mask==1, 0.0, pred)
-        targ = torch.where(mask==1, 0.0, targ)
-        
-        # mask 2-5 - bad isotope dist, below purity, high m/z error, ambiguous annotation. Can have any intensity up to the target
-        if doFullMask:
-            pred = torch.where(torch.logical_and(mask>1, pred < targ), 0.0, pred)
-            pred = torch.where(torch.logical_and(mask>1, pred > targ), pred-targ, pred)
-            targ = torch.where(mask>1, 0.0, targ)
-            
-            #pred = torch.where(torch.logical_and(torch.logical_and(mask>1, mask !=3), pred < targ), 0.0, pred)
-            #pred = torch.where(torch.logical_and(torch.logical_and(mask>1, mask !=3), pred > targ), pred-targ, pred)
-            #targ = torch.where(torch.logical_and(mask>1, mask !=3), 0.0, targ)
-            
-        return targ, pred
     
     
     def input_from_file(self, fstarts, fn):
