@@ -5,66 +5,18 @@ import csv
 import numpy as np
 import torch
 from annotation import annotation
+from dataset import createPeptide, calcMZ
 import math
 import statistics
 
 
-def createPeptide(seq, z, mod_string):
-     # create peptide sequence
-    pep = oms.AASequence.fromString(seq)
-    # add mods
-    mods = mod_string.split("(")
-    if len(mods) > 0:
-        for mod in mods[1:]:
-            index, residue, mod = mod.strip(")").split(",")
-            pep.setModification(int(index), mod)
-    return pep
-
-def getEmpricalFormula(seq, z, mods, annot_string):
-    # parse annotation
-    annot = annotation.from_entry(annot_string, z)
-    pep = createPeptide(seq, z, mods)
-    return annot.getEmpiricalFormula(pep)
-
 def calcIsotopeDistribution(seq, z, mods, annot_string, iso2efficiency):
     # parse annotation
     annot = annotation.from_entry(annot_string, z)
-    pep = createPeptide(seq, z, mods)
+    pep = createPeptide(seq, mods)
     return annot.getTheoreticalIsotopeDistribution(pep, iso2efficiency)
 
-def calcMZ(seq, z, mods, annot_string):
-    # parse annotation
-    annot = annotation.from_entry(annot_string, z)
-    pep = createPeptide(seq, z, mods)
-    return annot.getMZ(pep)
 
-class Labeler:
-    def __init__(self, D):
-        self.D = D
-        
-    def IncompleteLabels(self, txt_fn):
-        """
-        Allowed modifications (230807):
-        - Acetyl, Carbamidomethyl, Gln->pyro-Glu, Glu->pyro-Glu, Oxidation, 
-          Phospho, Pyro-carbamidomethyl
-        """
-        labels_ = [a.split() for a in open(txt_fn).read().split("\n")]
-        labels = []
-        for data in labels_:
-            seq = data[0]
-            charge = int(data[1])
-            mods = data[2]
-            nce = int(data[3])
-            
-            mz = self.getPeptideWithMod(seq, mods, charge).getMonoWeight(oms.Residue.ResidueType.Full, charge) / charge
-            
-            label = '%s/%d_%s_NCE%.2f'%(seq,charge,mods,nce)
-            labels.append(label)
-        
-        return labels
-    
-    def CompleteLabels(self, txt_fn):
-        return open(txt_fn).read().split("\n")
     
 class DicObj:
     def __init__(self,
@@ -324,24 +276,6 @@ class LoadObj:
         out = [outseq, outch] if self.embed else [outseq] #FIXME !!! go back to previous
         return out, info
     
-    def apply_group_constraints(self, pred, index2new_indices, new_size):
-        pred = torch.nn.functional.pad(pred, (0, new_size-pred.size(dim=1)), "constant", 0)
-
-        for index in index2new_indices:
-            for new_index in index2new_indices[index]:
-                pred[:, new_index] += pred[:, index]
-        
-        return pred
-        
-        #new_pred = torch.zeros((pred.size(dim=0), new_size), dtype=torch.float32)
-        #new_pred[:, 0:pred.size(dim=1)] = pred
-        
-        #for index in index2new_indices:
-        #    for new_index in index2new_indices[index]:
-        #        new_pred[:, new_index] += new_pred[:, index]
-        
-        #return new_pred
-    
     def target(self, fstart, fp, mint=0, return_mz=False):
         """
         Create target, from streamlined dataset, to train model on.
@@ -401,213 +335,7 @@ class LoadObj:
         
         return target, mz, annotated, masks
     
-    def root_intensity(self, ints, root=2):
-        """
-        Take the root of an intensity vector
 
-        Parameters
-        ----------
-        ints : intensity vector
-        root : root value
-
-        Returns
-        -------
-        ints : return transformed intensity vector
-
-        """
-        if root==2:
-            ints[ints>0] = torch.sqrt(ints[ints>0]) # faster than **(1/2)
-        else:
-            ints[ints>0] = ints[ints>0]**(1/root)
-        return ints
-    
-    def norm_sum_one(self, ints):
-        ints /= np.sum(ints)
-        return ints
-    
-    def norm_base_peak(self, ints):
-        ints /= np.max(ints)
-        return ints
-
-    def add_ce(self, label, ceadd=0, typ='nce'):
-        """
-        Add to collision energy in label.
-
-        Parameters
-        ----------
-        label : Input label.
-        ceadd : Float value to add to existing collision energy.
-        typ : Either add to "ev" or "nce"
-
-        Returns
-        -------
-        Label with added collision energy
-
-        """
-        hold = label.split('_')
-        if len(hold)<4: hold += ['NCE0'] #TODO Non-standard label
-        if typ=='ev': hold[-2] = '%.1feV'%(float(hold[-2][:-2])+ceadd)
-        elif typ=='nce': hold[-1] = 'NCE%.2f'%(float(hold[-1][3:])+ceadd)
-        return "_".join(hold)
-
-    def inp_spec_msp(self, 
-                     fstart, 
-                     fp,
-                     mint=1e-10,
-                     sortmz=False
-                     ):
-        """
-        Input spectrum from MSP file. Works on 1 spectrum at a time.
-        
-        :param fstart: File starting positions for "Name:..." labels in msp.
-        :param fp: file pointer to msp file
-        :param mint: minimum intensity for including peaks
-        :param sortmz: sort the spectrum by mz, ascending. Necessary depending
-                       on 
-        
-        :output label: spectrum label
-        :output #2: tuple of (masses, intensities, ions)
-        """
-        fp.seek(fstart)
-        label = fp.readline().split()[1]
-        
-        # Proceed to the peak list
-        for _ in range(5):
-            pos = fp.tell()
-            line = fp.readline()
-            if line[:9]=='Num peaks':
-                fp.seek(pos)
-                break
-        npks = int(fp.readline().split()[2])
-        masses = np.zeros((npks,));Abs = np.zeros((npks,));ions=[]
-        # count=1
-        for m in range(npks):
-            line = fp.readline()
-            # print(npks, count, line);count+=1
-            spl = '\t' if '\t' in line else ' '
-            split_line = line.split(spl)
-            if len(split_line)==2:
-                split_line += ['"?"']
-            [mass,ab,ion] = split_line
-            masses[m] = float(mass)
-            Abs[m] = float(ab)
-            ions.append(ion.strip()[1:-1].split(',')[0])
-        Abs /= np.max(Abs)
-        sort = Abs>mint
-        return label, (masses[sort],Abs[sort],np.array(ions)[sort])
-    
-    def FPs(self, filename, criteria, return_labels=True):
-        """
-        Get file positions of spectrum labels in msp file
-        
-        :param filename: filepath+name of msp file
-        :param criteria: string of python comparison statements to be 
-                         evaluated. Use spectrum attributes "seq", "charge",
-                         "ev", "nce", or "mods".
-        
-        :return poss: numpy array of file positions for labels meeting criteria
-        """
-        with open(filename,'r') as f:
-            _ = f.read()
-            end = f.tell()
-            
-            poss = []
-            labs = []
-            f.seek(0)
-            pos = 0
-            while pos<end:
-                pos = f.tell()
-                line = f.readline()
-                # Prevent pos from blowing up (over end)
-                if line=='\n':
-                    pos = f.tell()
-                    line = f.readline()
-                if (line[:5]=='Name:') | (line[:5]=='NAME:'):
-                    label = line.split()[-1].strip()
-                    # if raw scans for rescoring, I expect the label to be e.g.
-                    # Name: Scan=0000
-                    # else then parse the label if criteria is not None
-                    if len(label.split('_'))==1:
-                        poss.append(pos)
-                        labs.append(label)
-                    else:
-                        if criteria==None:
-                            poss.append(pos)
-                            labs.append(label)
-                        else:
-                            [seq,other] = line.split()[1].split('/')
-                            otherspl = other.split('_') #TODO Non-standard label
-                            if len(otherspl)==1: otherspl+=['0', '0eV', 'NCE0']
-                            # if len(otherspl)<4: otherspl+=['NCE0'] #TODO Non-standard label
-                            [charge,mods,nce] = otherspl #TODO Non-standard label
-                            charge = int(charge)
-                            nce = float(nce[3:])
-                            if eval(criteria):
-                                poss.append(pos)
-                                labs.append(label)
-                if line[:3]=='Num':
-                    nmpks = int(line.split()[-1])
-                    for _ in range(nmpks): _ = f.readline()
-        if return_labels: return np.array(poss), np.array(labs)
-        else: return np.array(poss)
-    
-    def FPs_from_labels(self, query_labels, msp_filename):
-        """
-        Search for matching labels in msp file, return the file position
-
-        Parameters
-        ----------
-        query_labels : list of spectrum labels to search for in the msp file.
-        msp_filename : Filepath+name of msp file
-
-        Returns
-        -------
-        out : list of filepositions for the query labels
-
-        """
-        with open(msp_filename, 'r') as f:
-            _ = f.read()
-            end = f.tell()
-            
-            out = {label:-1 for label in query_labels}
-            f.seek(0)
-            count = 0
-            pos = 0
-            while pos<end:
-                pos = f.tell()
-                line = f.readline()
-                if line=='\n':
-                    pos = f.tell()
-                    line = f.readline()
-                if line[:5].upper()=='NAME:':
-                    if line.strip().split()[1] in out.keys():
-                        out[line.strip().split()[1]] = pos
-                        count+=1
-                if count==len(query_labels):
-                    pos=end
-        return np.array(list(out.values()))
-    
-    def Pos2labels(self, fname, fposs=None):
-        """
-        Get spectrum labels from msp file
-        
-        Parameters
-        ----------
-        fname : msp filepath+name to get labels from.
-        fposs : file positions of labels. If None then use FPs() to get them.
-
-        Returns
-        -------
-        labels : list of spectrum labels
-
-        """
-        labels = []
-        with open(fname, 'r') as f:
-            for I, pos in enumerate(fposs):
-                f.seek(pos)
-                label = f.readline().split()[1]
-                labels.append(label)
-        return labels
     
     def ConvertToPredictedSpectrum(self, pred, info, doIso=True):
         (seq, mod, charge, nce, min_mz, max_mz, LOD, iso2efficiency, weight) = info
@@ -752,7 +480,7 @@ class LoadObj:
                 a = False
             
             if a:
-                pep = createPeptide(seq, 0, mods)
+                pep = createPeptide(seq, mods)
                 ec = annot.getEmpiricalFormula(pep).getElementalComposition()
                 
                 for element in ec:
