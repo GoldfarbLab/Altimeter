@@ -4,7 +4,7 @@ import os
 import yaml
 import utils_unispec
 import torch
-from altimeter_dataset import AltimeterDataModule
+from dataset import AltimeterDataModule
 from lightning_model import LitFlipyFlopy
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping

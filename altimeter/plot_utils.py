@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 import wandb
 import lightning as L
-from altimeter_dataset import filter_by_scan_range, match, norm_base_peak
+from dataset import filter_by_scan_range, match, norm_base_peak
 
 plt.close('all')
 
