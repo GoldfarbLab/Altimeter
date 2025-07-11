@@ -1,4 +1,5 @@
 import pyopenms as oms
+import pyopenms.Constants
 import numpy as np
 import re as re
 
