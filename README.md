@@ -76,3 +76,32 @@ repository's dependencies, then run:
 ```bash
 python altimeter/train.py config/data.yaml
 ```
+
+## Export to ONNX and TorchScript
+
+The repository provides `export2onnx.py` to serialize the model for
+serving. Run the script inside the Docker image used for training:
+
+```bash
+docker run --gpus all -v $PWD:/workspace/Altimeter \
+    dennisgoldfarb/pytorch_ris:lightning \
+    python altimeter/export2onnx.py \
+         model.ts \
+         model.onnx \
+       --dic-config path/to/data.yaml \
+       --model-config path/to/model_config.yaml \
+       --model-ckpt path/to/checkpoint.ckpt
+```
+
+The first argument is the output path for the TorchScript model and the
+second argument specifies the ONNX file for the spline model. Adjust the
+paths to match your environment.
+
+
+## Exporting
+
+Convert a trained checkpoint to TorchScript and ONNX models:
+
+```bash
+python altimeter/export2onnx.py 
+```
