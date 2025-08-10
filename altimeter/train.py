@@ -49,10 +49,12 @@ else:
 ############################ Weights and Biases ###############################
 ###############################################################################
 
-wandb_logger = WandbLogger(project="Altimeter", 
-                           config = config, 
-                           log_model=False, 
-                           save_dir="/scratch1/fs1/d.goldfarb/Backpack/")
+wandb_logger = WandbLogger(
+    project="Altimeter",
+    config=config,
+    log_model=False,
+    save_dir=config["wandb_save_dir"],
+)
 
 ###############################################################################
 ################################## Model ######################################

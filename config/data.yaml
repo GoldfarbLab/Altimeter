@@ -1,5 +1,6 @@
-base_path: /storage1/fs1/d.goldfarb/Active/Backpack/models/byp_imm5_SA_roll_12hr/
-ion_dictionary_path: /storage1/fs1/d.goldfarb/Active/Backpack/models/byp_imm5_SA_roll_12hr/saved_model/ion_dictionary.txt
+base_path: /path/to/training/data/
+ion_dictionary_path: /path/to/training/data/ion_dictionary.txt
+wandb_save_dir: /path/to/wandb_output
 dataset_path: datasets/
 position_path: txt_pos/
 label_path: labels/
