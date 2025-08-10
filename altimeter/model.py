@@ -516,6 +516,14 @@ class FlipyFlopy(nn.Module):
     # from NCE 20 to 40
     def integrate_auc(self, knots, poly_coef):
         """Approximate the integral of the spline coefficients.
+        
+        Notes
+        -----
+        The multiplicative constants used in this calculation are
+        hardcoded and were derived from the published knot positions.
+        They correspond to evaluating the cubic B-spline basis from an
+        NCE of 20 to 40.  If the knot locations or the evaluation range
+        change, these coefficients must be recomputed.
 
         Parameters
         ----------
