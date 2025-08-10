@@ -74,7 +74,10 @@ def main():
     
 
 
-    script = model.to_torchscript()
+    script = torch.jit.trace(
+        lambda seq, ch: model.forward_coef([seq, ch]),
+        (input_seq, input_ch)             
+    )
     torch.jit.save(script, args.altimeter_outpath)
     
     
