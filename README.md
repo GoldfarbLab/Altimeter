@@ -4,6 +4,22 @@
 
 This repository contains the model and training code for Altimeter - a transformer model for peptide spectrum prediction.
 
+## Koina deployment
+
+Altimeter models are hosted on [Koina](https://koina.wilhelmlab.org) and can be queried via their REST API:
+
+- [Altimeter_2024_splines_index](https://koina.wilhelmlab.org/docs#post-/Altimeter_2024_splines_index/infer)
+- [Altimeter_2024_splines](https://koina.wilhelmlab.org/docs#post-/Altimeter_2024_splines/infer)
+- [Altimeter_2024_intensities](https://koina.wilhelmlab.org/docs#post-/Altimeter_2024_intensities/infer)
+- [Altimeter_2024_isotopes](https://koina.wilhelmlab.org/docs#post-/Altimeter_2024_isotopes/infer)
+
+## Model overview
+
+- **Data**: trained on a reprocessed ProteomeTools dataset covering tryptic and non-tryptic peptides (trypsin, LysC, AspN, HLA ligands) acquired on an Orbitrap Fusion Lumos with NCEs from 20–40; only methionine oxidation and cysteine carbamidomethylation were considered.
+- **Model**: predicts fragment ion intensities across NCEs using cubic B-splines; an isotopes variant re-creates full fragment isotope patterns based on isolation efficiencies; validated for HCD on Orbitrap instruments only.
+- **Performance**: achieves a median normalized spectral angle of 0.941 on a held-out test set and performs consistently across proteases, with slight degradation for long peptides or extreme charge states.
+- **Input**: peptides 6–40 amino acids long (6–30 recommended), charge 1–7 (1–4 recommended), NCE between 20–40, with variable methionine oxidation and static carbamidomethylated cysteines.
+
 ## Dataset
 
 The training data is available from Zenodo: https://zenodo.org/records/15875054
