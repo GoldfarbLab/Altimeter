@@ -1,0 +1,15 @@
+var_mods:
+  Oxidation: M
+
+fixed_mods:
+  Carbamidomethyl: C
+
+mods:
+  M[+15.994915]: Oxidation
+  X[+42.010567]: Acetylation
+  C[+57.021465]: Carbamidomethyl
+
+mods2:
+  "+15.994915": Oxidation
+  "+42.010567": Acetylation
+  "+57.021465": Carbamidomethyl

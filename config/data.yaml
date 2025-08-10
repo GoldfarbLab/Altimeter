@@ -1,0 +1,42 @@
+base_path: /storage1/fs1/d.goldfarb/Active/Backpack/models/byp_imm5_SA_roll_12hr/
+ion_dictionary_path: /storage1/fs1/d.goldfarb/Active/Backpack/models/byp_imm5_SA_roll_12hr/saved_model/ion_dictionary.txt
+dataset_path: datasets/
+position_path: txt_pos/
+label_path: labels/
+saved_model_path: saved_model/
+
+weights:
+restart:
+transfer:
+
+seq_len: 40
+chlim: 
+   - 1
+   - 8
+
+model_config:
+   embedsz: 256
+   blocks: 9
+   head:
+      - 16
+      - 16
+      - 64
+   units: None
+   filtlast: 512
+   learn_ffn_embed: False
+   CEembed: True
+   drop: 0.1
+   coefs: 4
+   knots: [6,13,20,27,34,41,48,55]
+
+root_int:
+lr: 3e-4
+epochs: 100
+steps: 1000000
+batch_size: 100
+test_batch_size: 500
+lr_decay_start: 3
+lr_decay_rate: 0.85
+svwts: all
+num_workers: 4
+
