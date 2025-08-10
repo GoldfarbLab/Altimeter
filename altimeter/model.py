@@ -4,6 +4,7 @@ import torch
 from torch import nn
 import numpy as np
 from typing import Optional
+from .bspline import eval_bspline
 
 
 # NOTE: Target sigma
@@ -537,39 +538,3 @@ class FlipyFlopy(nn.Module):
         return auc / 4
             
 
-
-
-# x = NCEs
-# k = polynomial degree
-# i = basis-spline index
-# t = knots
-def _basis(x, k, i, t):
-    out = torch.zeros_like(x)
-    
-    if k == 0:
-        out = torch.where(torch.logical_and(t[:,i,:] <= x, x < t[:,i+1,:]), 1.0, 0.0)
-        return out
-
-    if t[0, i+k, 0] == t[0, i, 0]:
-        c1 = torch.zeros_like(x)
-    else:
-        c1 = (x - t[:,i,:])/(t[:,i+k,:] - t[:,i,:]) * _basis(x, k-1, i, t)
-        
-    if t[0, i+k+1, 0] == t[0, i+1, 0]:
-        c2 = torch.zeros_like(x)
-    else:
-        c2 = (t[:,i+k+1,:] - x)/(t[:,i+k+1,:] - t[:,i+1,:]) * _basis(x, k-1, i+1, t)
-    
-    return c1 + c2
-
-# x = NCEs
-# t = knots
-# c = coefficients
-# k = polynomial degree
-def eval_bspline(x, t, c, k):
-    """Evaluate a B-spline for a batch of inputs."""
-    n = t.shape[1] - k - 1
-    out = torch.zeros_like(x)
-    for i in range(n):
-        out += c[:, i, :] * _basis(x, k, i, t)
-    return out
