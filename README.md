@@ -85,7 +85,7 @@ serving. Run the script inside the Docker image used for training:
 ```bash
 docker run --gpus all -v $PWD:/workspace/Altimeter \
     dennisgoldfarb/pytorch_ris:lightning \
-    python altimeter/export2onnx.py \
+    python altimeter/export.py \
          model.ts \
          model.onnx \
        --dic-config path/to/data.yaml \
