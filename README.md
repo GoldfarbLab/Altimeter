@@ -27,8 +27,9 @@ The training data is available from Zenodo: https://zenodo.org/records/15875054
 Download and unpack the archive into a working directory, e.g. `~/altimeter_data`:
 
 ```bash
-wget https://zenodo.org/records/15875054/files/altimeter_data.zip?download=1 -O altimeter_data.zip
-unzip altimeter_data.zip -d ~/altimeter_data
+wget https://zenodo.org/records/15875054/files/Altimeter_training_data.tar.gz?download=1 -O Altimeter_training_data.tar.gz
+mkdir -p ~/altimeter_data
+tar -xzf Altimeter_training_data.tar.gz -C ~/altimeter_data
 ```
 
 After extraction, update `config/data.yaml` so the paths point to your dataset location:
