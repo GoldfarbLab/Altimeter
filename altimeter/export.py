@@ -48,7 +48,7 @@ def main():
         dconfig["seq_len"],
         dconfig["chlim"],
     )
-    L = utils_unispec.LoadObj(D, embed=True)
+    channels = D.seq_channels
 
     # Instantiate model
     with open(args.model_config) as stream:
@@ -63,14 +63,14 @@ def main():
     )
 
 
-    input_seq = torch.zeros((1, L.channels, D.seq_len), dtype=torch.float32, device=device)
+    input_seq = torch.zeros((1, channels, D.seq_len), dtype=torch.float32, device=device)
     input_ch = torch.zeros((1,1), dtype=torch.float32, device=device)
     
     input_sample = [input_seq, input_ch]
     input_names = ["inp", "inpch"]
     output_names = ["coefficients", "knots", "AUCs"]
     
-    print(model.model.get_knots())
+    #print(model.model.get_knots())
     
 
 
@@ -88,8 +88,7 @@ def main():
     input_ce = torch.zeros((1,1), dtype=torch.float32, device=device)
     input_sample = (input_coef, input_knots, input_ce)
     y = model2(*input_sample)
-    print(y.shape)
-    
+ 
     input_names = ["coefficients", "knots", "inpce"]
     output_names = ["intensities"]
     
