@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import lightning as L
-from .bspline import eval_bspline
+from bspline import eval_bspline
 
 class LitBSplineNN(L.LightningModule):
     def __init__(self):

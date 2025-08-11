@@ -6,7 +6,6 @@ import utils_unispec
 import torch
 from dataset import AltimeterDataModule
 from lightning_model import LitFlipyFlopy
-from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import ModelCheckpoint
 import lightning as L
@@ -32,29 +31,30 @@ D = utils_unispec.DicObj(config['ion_dictionary_path'], mod_config, config['seq_
 saved_model_path = os.path.join(config['base_path'], config['saved_model_path'])
 
 # Configuration dictionary
-if config['config'] is not None:
-    # Load model config
-    with open(config['config'], 'r') as stream:
-        model_config = yaml.safe_load(stream)
-else:
-    channels = D.seq_channels
-    model_config = {
-        'in_ch': channels,
-        'seq_len': D.seq_len,
-        'out_dim': len(D.ion2index),
-        **config['model_config']
-    }
+channels = D.seq_channels
+model_config = {
+    'in_ch': channels,
+    'seq_len': D.seq_len,
+    'out_dim': len(D.ion2index),
+    **config['model_config']
+}
 
 ###############################################################################
 ############################ Weights and Biases ###############################
 ###############################################################################
 
-wandb_logger = WandbLogger(
-    project="Altimeter",
-    config=config,
-    log_model=False,
-    save_dir=config["wandb_save_dir"],
-)
+use_wandb = config.get("use_wandb", True)
+if use_wandb:
+    from lightning.pytorch.loggers import WandbLogger
+
+    wandb_logger = WandbLogger(
+        project="Altimeter",
+        config=config,
+        log_model=False,
+        save_dir=config["wandb_save_dir"],
+    )
+else:
+    wandb_logger = False
 
 ###############################################################################
 ################################## Model ######################################
@@ -99,13 +99,18 @@ stopping_criteria = EarlyStopping(monitor="val_SA_mean", mode="max", min_delta=0
 checkpoint_callback = ModelCheckpoint(dirpath=saved_model_path, save_top_k=5, monitor="val_SA_mean", mode="max", every_n_epochs=1)
 
 dm = AltimeterDataModule(config, D)
-mirrorplot_callback = MirrorPlotCallback(dm)
-trainer = L.Trainer(default_root_dir=saved_model_path,
-                    logger=wandb_logger,
-                    callbacks=[stopping_criteria, checkpoint_callback, mirrorplot_callback],
-                    strategy="ddp_find_unused_parameters_true",
-                    max_epochs=config['epochs'],
-                    )
+callbacks = [stopping_criteria, checkpoint_callback]
+if use_wandb:
+    mirrorplot_callback = MirrorPlotCallback(dm)
+    callbacks.append(mirrorplot_callback)
+
+trainer = L.Trainer(
+    default_root_dir=saved_model_path,
+    logger=wandb_logger,
+    callbacks=callbacks,
+    strategy="ddp_find_unused_parameters_true",
+    max_epochs=config['epochs'],
+)
 
 checkpoint_path = (
     os.path.join(config['base_path'], config['saved_model_path'], config['restart'])

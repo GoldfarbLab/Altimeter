@@ -4,7 +4,7 @@ import torch
 from torch import nn
 import numpy as np
 from typing import Optional
-from .bspline import eval_bspline
+from bspline import eval_bspline
 
 
 # NOTE: Target sigma

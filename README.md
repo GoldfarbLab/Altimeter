@@ -43,20 +43,6 @@ label_path: labels/
 saved_model_path: saved_model/
 ```
 
-## Weights & Biases
-
-The training script logs metrics to [Weights & Biases](https://wandb.ai/).
-
-1. Create an account and obtain an API key.
-2. Authenticate once on the command line:
-   ```bash
-   wandb login
-   ```
-   or set `WANDB_API_KEY` in your environment.
-3. The default project name is `Altimeter`. Override it with the
-   `WANDB_PROJECT` environment variable or by editing `altimeter/train.py`.
-4. To run without logging, set `WANDB_MODE=offline`.
-
 ## Training
 
 ### Using Docker
@@ -67,7 +53,7 @@ docker run --gpus all -v $PWD:/workspace/Altimeter \
     -v /path/to/altimeter_data:/data \
     -w /workspace/Altimeter/altimeter \
     dennisgoldfarb/pytorch_ris:lightning \
-    python3 train.py ../config/data.yaml
+    python train.py ../config/data.yaml
 ```
 
 ### Without Docker
@@ -76,7 +62,7 @@ Create a Python environment with PyTorch, PyTorch Lightning, and the
 repository's dependencies, then run:
 
 ```bash
-python altimeter/train.py config/data.yaml
+python train.py ../config/data.yaml
 ```
 
 ## Export to ONNX and TorchScript
@@ -87,10 +73,11 @@ serving. Run the script inside the Docker image used for training:
 ```bash
 docker run --gpus all -v $PWD:/workspace/Altimeter \
     dennisgoldfarb/pytorch_ris:lightning \
-    python altimeter/export.py \
+    -w /workspace/Altimeter/altimeter \
+    python export.py \
          model.ts \
          model.onnx \
-       --dic-config path/to/data.yaml \
+       --dic-config ../config/data.yaml \
        --model-config path/to/model_config.yaml \
        --model-ckpt path/to/checkpoint.ckpt
 ```
@@ -98,12 +85,3 @@ docker run --gpus all -v $PWD:/workspace/Altimeter \
 The first argument is the output path for the TorchScript model and the
 second argument specifies the ONNX file for the spline model. Adjust the
 paths to match your environment.
-
-
-## Exporting
-
-Convert a trained checkpoint to TorchScript and ONNX models:
-
-```bash
-python altimeter/export2onnx.py 
-```

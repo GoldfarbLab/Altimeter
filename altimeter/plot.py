@@ -11,7 +11,8 @@ def scoreDistPlot(losses, dataset, logger, epoch=0):
     plt.close('all')
     fig, ax = plt.subplots()
     ax.hist(losses.cpu(), 100, histtype='bar', color='blue')
-    logger.experiment.log({"cs_dist_plot_" + dataset: wandb.Image(plt)})
+    if logger and hasattr(logger, "experiment"):
+        logger.experiment.log({"cs_dist_plot_" + dataset: wandb.Image(plt)})
     plt.close()
 
 class MirrorPlotCallback(L.Callback):
@@ -91,7 +92,8 @@ class MirrorPlotCallback(L.Callback):
             axs[row, col].plot(NCEs, pred[:, frag_i].numpy())
             axs[row, col].set_title(ionspred[frag_i])
 
-        pl_module.logger.experiment.log({"smoothplot": wandb.Image(plt)})
+        if pl_module.logger and hasattr(pl_module.logger, "experiment"):
+            pl_module.logger.experiment.log({"smoothplot": wandb.Image(plt)})
         plt.close()
 
     def mirrorplot(self, entry, pred, mzpred, ionspred, pl_module, maxnorm=True, save=True):
@@ -209,5 +211,6 @@ class MirrorPlotCallback(L.Callback):
             % (seq, len(seq), charge, nce, mod, annotated_percent, sa)
         )
 
-        pl_module.logger.experiment.log({"mirroplot": wandb.Image(plt)})
+        if pl_module.logger and hasattr(pl_module.logger, "experiment"):
+            pl_module.logger.experiment.log({"mirroplot": wandb.Image(plt)})
         plt.close()

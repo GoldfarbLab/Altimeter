@@ -1,6 +1,7 @@
-base_path: /path/to/training/data/
-ion_dictionary_path: /path/to/training/data/ion_dictionary.txt
-wandb_save_dir: /path/to/wandb_output
+base_path: /data/
+ion_dictionary_path: /data/ion_dictionary.txt
+wandb_save_dir: /data/Altimeter_training_data
+use_wandb: false
 dataset_path: datasets/
 position_path: txt_pos/
 label_path: labels/
