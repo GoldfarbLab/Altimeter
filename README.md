@@ -65,8 +65,9 @@ The training script logs metrics to [Weights & Biases](https://wandb.ai/).
 docker pull dennisgoldfarb/pytorch_ris:lightning
 docker run --gpus all -v $PWD:/workspace/Altimeter \
     -v /path/to/altimeter_data:/data \
+    -w /workspace/Altimeter/altimeter \
     dennisgoldfarb/pytorch_ris:lightning \
-    python altimeter/train.py config/data.yaml
+    python3 train.py ../config/data.yaml
 ```
 
 ### Without Docker
