@@ -67,7 +67,7 @@ python train.py ../config/data.yaml
 
 ## Export to ONNX and TorchScript
 
-The repository provides `export2onnx.py` to serialize the model for
+The repository provides `export.py` to serialize the model for
 serving. Run the script inside the Docker image used for training:
 
 ```bash

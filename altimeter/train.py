@@ -47,14 +47,16 @@ use_wandb = config.get("use_wandb", True)
 if use_wandb:
     from lightning.pytorch.loggers import WandbLogger
 
-    wandb_logger = WandbLogger(
+    logger = WandbLogger(
         project="Altimeter",
         config=config,
         log_model=False,
         save_dir=config["wandb_save_dir"],
     )
 else:
-    wandb_logger = False
+    from lightning.pytorch.loggers import CSVLogger
+
+    logger = CSVLogger(save_dir=config["wandb_save_dir"], name="Altimeter")
 
 ###############################################################################
 ################################## Model ######################################
@@ -106,7 +108,7 @@ if use_wandb:
 
 trainer = L.Trainer(
     default_root_dir=saved_model_path,
-    logger=wandb_logger,
+    logger=logger,
     callbacks=callbacks,
     strategy="ddp_find_unused_parameters_true",
     max_epochs=config['epochs'],
