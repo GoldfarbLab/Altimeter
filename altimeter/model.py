@@ -462,8 +462,9 @@ class FlipyFlopy(nn.Module):
         elif len(inpch.shape) == 2:
             inpch = inpch.squeeze(1)
             
+        ce_feat = self.embedCE(inpch, self.cesz, 10.0).detach()
         ch_embed = nn.functional.silu(
-            self.denseCH(self.embedCE(inpch, self.cesz, 10.0))
+            self.denseCH(ce_feat)
         )
         embed = self.postcat(torch.cat([ch_embed],-1))
         

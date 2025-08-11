@@ -61,30 +61,30 @@ def main():
     model = LitFlipyFlopy.load_from_checkpoint(
         args.model_ckpt, config=config, model_config=model_config
     )
-
+    model.eval()
 
     input_seq = torch.zeros((1, channels, D.seq_len), dtype=torch.float32, device=device)
     input_ch = torch.zeros((1,1), dtype=torch.float32, device=device)
-    
+
     input_sample = [input_seq, input_ch]
     input_names = ["inp", "inpch"]
     output_names = ["coefficients", "knots", "AUCs"]
-    
+
     #print(model.model.get_knots())
-    
 
 
-    script = torch.jit.trace(
-        lambda seq, ch: model.forward_coef([seq, ch]),
-        (input_seq, input_ch)             
-    )
+    with torch.no_grad():
+        script = torch.jit.trace(
+            lambda seq, ch: model.forward_coef([seq, ch]),
+            (input_seq, input_ch)
+        )
     torch.jit.save(script, args.altimeter_outpath)
     
     
     # repeat for splines
     model2 = LitBSplineNN()
     input_coef = torch.zeros((1, 4, 380), dtype=torch.float32, device=device)
-    input_knots = model.model.get_knots().unsqueeze(0).to(device)
+    input_knots = model.model.get_knots().unsqueeze(0).to(device).detach()
     input_ce = torch.zeros((1,1), dtype=torch.float32, device=device)
     input_sample = (input_coef, input_knots, input_ce)
     y = model2(*input_sample)
