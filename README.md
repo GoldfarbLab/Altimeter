@@ -53,7 +53,7 @@ docker run --gpus all -v $PWD:/workspace/Altimeter \
     -v /path/to/altimeter_data:/data \
     -w /workspace/Altimeter/altimeter \
     dennisgoldfarb/pytorch_ris:lightning \
-    python train.py ../config/data.yaml
+    python3 train.py ../config/data.yaml
 ```
 
 ### Without Docker
@@ -72,14 +72,15 @@ serving. Run the script inside the Docker image used for training:
 
 ```bash
 docker run --gpus all -v $PWD:/workspace/Altimeter \
-    dennisgoldfarb/pytorch_ris:lightning \
     -w /workspace/Altimeter/altimeter \
-    python export.py \
-         model.ts \
-         model.onnx \
+    dennisgoldfarb/pytorch_ris:lightning \
+    
+    python3 export.py \
+         /data/model.ts \
+         /data/model.onnx \
        --dic-config ../config/data.yaml \
-       --model-config path/to/model_config.yaml \
-       --model-ckpt path/to/checkpoint.ckpt
+       --model-config /data/saved_model/model_config.yaml \
+       --model-ckpt /data/saved_model/checkpoint.ckpt  # replace with your checkpoint
 ```
 
 The first argument is the output path for the TorchScript model and the
