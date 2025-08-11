@@ -72,6 +72,7 @@ serving. Run the script inside the Docker image used for training:
 
 ```bash
 docker run --gpus all -v $PWD:/workspace/Altimeter \
+    -v /path/to/altimeter_data:/data \
     -w /workspace/Altimeter/altimeter \
     dennisgoldfarb/pytorch_ris:lightning \
     
