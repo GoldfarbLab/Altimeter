@@ -5,6 +5,7 @@ from torch import nn
 import numpy as np
 from typing import Optional
 from bspline import eval_bspline
+import math
 
 
 # NOTE: Target sigma
@@ -416,11 +417,12 @@ class FlipyFlopy(nn.Module):
 
         """
         # ce.shape = (bs,)
+        log_freq = -math.log(freq)
         embed = (
-            ce[:,None] * 
-            torch.exp(
-                -torch.log(torch.tensor(freq)) * 
-                torch.arange(embedsz//2, device=ce.device)/(embedsz//2)
+            ce[:, None]
+            * torch.exp(
+                log_freq
+                * torch.arange(embedsz // 2, device=ce.device) / (embedsz // 2)
             )[None]
         )
         return torch.cat([torch.cos(embed),torch.sin(embed)],dim=1)      
@@ -481,11 +483,17 @@ class FlipyFlopy(nn.Module):
         out = torch.relu(self.ProjNorm(torch.einsum('abc,bd->adc', out, self.Proj))) # bs, filtlast, seq_len
 
         # get b-spline coefficients
-        poly_coef = torch.reshape(self.final(out.transpose(-1,-2)).mean(dim=1), (inp.shape[0], self.num_coefs, self.out_dim))
-        knots = self.get_knots().unsqueeze(0).repeat(inp.shape[0], 1)
-        auc = self.integrate_auc(knots[0], poly_coef)
-        
-        return poly_coef, knots, auc 
+        poly_coef = torch.reshape(
+            self.final(out.transpose(-1, -2)).mean(dim=1),
+            (inp.shape[0], self.num_coefs, self.out_dim),
+        )
+        knots_base = self.get_knots()
+        if torch.jit.is_tracing():
+            knots_base = knots_base.detach()
+        knots = knots_base.unsqueeze(0).repeat(inp.shape[0], 1)
+        auc = self.integrate_auc(knots_base, poly_coef)
+
+        return poly_coef, knots, auc
         
     def forward(self, inp):
         """Evaluate the full model and return predicted intensities."""

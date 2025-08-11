@@ -67,17 +67,21 @@ def main():
     input_ch = torch.zeros((1,1), dtype=torch.float32, device=device)
     
     input_sample = [input_seq, input_ch]
-    input_names = ["inp", "inpch"]
-    output_names = ["coefficients", "knots", "AUCs"]
-    
-    #print(model.model.get_knots())
-    
+    class CoefficientModule(torch.nn.Module):
+        """Wrapper to expose coefficient computation for tracing."""
 
+        def __init__(self, lit_model: LitFlipyFlopy) -> None:
+            super().__init__()
+            # register the underlying FlipyFlopy model so parameters are traced
+            self.model = lit_model.model
 
-    script = torch.jit.trace(
-        lambda seq, ch: model.forward_coef([seq, ch]),
-        (input_seq, input_ch)             
-    )
+        def forward(self, seq: torch.Tensor, ch: torch.Tensor):
+            return self.model.compute_coefficients([seq, ch])
+
+    coef_module = CoefficientModule(model)
+    coef_module.eval()
+
+    script = torch.jit.trace(coef_module, (input_seq, input_ch))
     torch.jit.save(script, args.altimeter_outpath)
     
     
