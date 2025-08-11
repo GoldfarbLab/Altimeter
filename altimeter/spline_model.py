@@ -17,13 +17,24 @@ class BSplineNN(nn.Module):
         super(BSplineNN, self).__init__()
     
     def forward(self, coefficients, knots, inpce):
-        # create knots
+        # match knot tensor to the output dimension of the coefficients
         knots = knots.unsqueeze(2).repeat(1, 1, coefficients.shape[-1])
-        
+
+        # ensure the collision energy tensor has shape (batch, out_dim)
         if inpce.dim() == 0:
-            inpce = inpce.unsqueeze(0)
-        inpce = inpce.unsqueeze(1).repeat(1, coefficients.shape[-1])
-        
+            # scalar collision energy
+            inpce = inpce.view(1, 1)
+        elif inpce.dim() == 1:
+            # shape (batch,) -> (batch,1)
+            inpce = inpce.unsqueeze(1)
+        elif inpce.dim() == 2:
+            # already (batch,1)
+            pass
+        else:
+            raise RuntimeError("inpce must have 0, 1, or 2 dimensions")
+
+        inpce = inpce.expand(-1, coefficients.shape[-1])
+
         out = eval_bspline(inpce, knots, coefficients, 3)
-        
+
         return out
